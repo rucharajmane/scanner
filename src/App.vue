@@ -137,6 +137,9 @@ export default {
         this.toggleCamera();
       } else {
         this.stopScanning();
+        if (this.currentFacingMode == "environment") {
+          this.toggleCamera();
+        }
       }
     },
   },
