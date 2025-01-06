@@ -84,15 +84,15 @@ export default {
     };
   },
   watch: {
-    showQrCodeScanner(newValue) {
-      if (newValue) {
-        this.startScanning();
-        this.toggleCamera();
-      } else {
-        this.stopScanning();
-      }
+  showQrCodeScanner(newValue) {
+    if (newValue) {
+      this.initializeScanner();  // Initialize the scanner first
+      this.toggleCamera();
+    } else {
+      this.stopScanning();
     }
-  },
+  }
+},
   methods: {
     stopScanning() {
       if (this.controls) {
@@ -131,69 +131,75 @@ export default {
       }
     },
     async initializeScanner() {
-      try {
-        this.isInitializing = true;
-        this.codeReader = new BrowserQRCodeReader();
-        const hints = new Map();
-        hints.set(2, true);
-        this.codeReader.hints = hints;
+  try {
+    this.isInitializing = true;
+    this.codeReader = new BrowserQRCodeReader();
+    const hints = new Map();
+    hints.set(2, true);
+    this.codeReader.hints = hints;
 
-        await this.startScanning();
-      } catch (error) {
-        console.error("Failed to initialize scanner:", error);
-        this.qrCodeScannerError = `Scanner initialization failed: ${error.message}`;
-      }
-    },
-    async startScanning() {
-      try {
-        if (this.currentStream) {
-          this.stopScanning();
-        }
+    console.log("Scanner initialized:", this.codeReader);  // Debug log
 
-        const videoElement = this.$refs.video;
-        if (!videoElement) {
-          throw new Error("Video element not found");
-        }
-
-        const constraints = {
-          video: {
-            facingMode: { exact: this.currentFacingMode },
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-          }
-        };
-
-        this.controls = await this.codeReader.decodeFromConstraints(
-          constraints,
-          videoElement,
-          (result, error) => {
-            if (result) {
-              try {
-                console.log("QR code result: ", result.getText());
-                this.qrCodeData = result.getText(); // Save the decoded QR code data
-              } catch (err) {
-                console.error("Error processing QR code:", err);
-                this.qrCodeScannerError = "Invalid QR code format";
-              }
-            }
-            if (error && error.name !== "NotFoundException") {
-              console.error("QR Code scanning error:", error);
-            }
-          }
-        );
-
-        if (videoElement.srcObject) {
-          this.currentStream = videoElement.srcObject;
-          this.currentTrack = this.currentStream.getVideoTracks()[0];
-          console.log("Scanner started with facing mode:", this.currentFacingMode);
-        } else {
-          throw new Error("Failed to initialize video stream");
-        }
-      } catch (error) {
-        console.error("Error starting scanner:", error);
-        this.qrCodeScannerError = `Failed to start scanner: ${error.message}`;
-      }
+    await this.startScanning();
+  } catch (error) {
+    console.error("Failed to initialize scanner:", error);
+    this.qrCodeScannerError = `Scanner initialization failed: ${error.message}`;
+  }
+},
+async startScanning() {
+  try {
+    if (!this.codeReader) {
+      throw new Error("Scanner is not initialized");
     }
+
+    if (this.currentStream) {
+      this.stopScanning();
+    }
+
+    const videoElement = this.$refs.video;
+    if (!videoElement) {
+      throw new Error("Video element not found");
+    }
+
+    const constraints = {
+      video: {
+        facingMode: { exact: this.currentFacingMode },
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      }
+    };
+
+    this.controls = await this.codeReader.decodeFromConstraints(
+      constraints,
+      videoElement,
+      (result, error) => {
+        if (result) {
+          try {
+            console.log("QR code result: ", result.getText());
+            this.qrCodeData = result.getText(); // Save the decoded QR code data
+          } catch (err) {
+            console.error("Error processing QR code:", err);
+            this.qrCodeScannerError = "Invalid QR code format";
+          }
+        }
+        if (error && error.name !== "NotFoundException") {
+          console.error("QR Code scanning error:", error);
+        }
+      }
+    );
+
+    if (videoElement.srcObject) {
+      this.currentStream = videoElement.srcObject;
+      this.currentTrack = this.currentStream.getVideoTracks()[0];
+      console.log("Scanner started with facing mode:", this.currentFacingMode);
+    } else {
+      throw new Error("Failed to initialize video stream");
+    }
+  } catch (error) {
+    console.error("Error starting scanner:", error);
+    this.qrCodeScannerError = `Failed to start scanner: ${error.message}`;
+  }
+}  
   },
   beforeDestroy() {
     this.stopScanning();
